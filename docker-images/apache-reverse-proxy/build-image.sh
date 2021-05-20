@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # Build the Docker image locally
-docker build --tag cantondy/apache_php .
+docker build --tag alessandro/apache_rp .
