@@ -1,6 +1,5 @@
 # Image node 4.4
 FROM node:14.16.1
-#MAINTAINER Parrino Alessandro <alessandro.parrino@heig-vd.ch>
 
 RUN apt-get update && \
     apt-get install -y vim

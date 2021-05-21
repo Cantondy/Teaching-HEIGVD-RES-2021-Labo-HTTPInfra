@@ -1,4 +1,12 @@
 #!/bin/bash
-docker run -d cantondy/apache_php
-docker run -d alessandro/express_student
-docker run -d -p 8080:80 alessandro/apache_rp
+docker run -d --name apache_static res/apache_php
+docker run -d --name express_student res/express_student
+
+#Use to get ip address from apache static server automatically
+ip_static=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' apache_static)
+
+#Use to get ip address from express dynamic server automatically
+ip_dynamic=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' express_student)
+
+#Run reverse proxy server with ip addresses from static server and express dynamic server
+docker run -d -e STATIC_APP=$ip_static:80 -e DYNAMIC_APP=$ip_dynamic:3000 --name apache_rp -p 8080:80 res/apache_rp
