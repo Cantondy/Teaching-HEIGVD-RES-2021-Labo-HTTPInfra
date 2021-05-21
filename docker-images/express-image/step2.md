@@ -24,7 +24,7 @@ Exemple of our JSON r'esult: `{"Name":"Jackal","Age":33,"Gender":"Male"}`
 
 #### Tests
 In the `docker-images/express-image` folder you will find everything necessary for the installation of our node server.
-We need to build our docker image, I have already configured for you a bash file **build-image.sh** with the command: `docker build -t res/express_student .` , doing so will run the configurations found in the DockerFile. Then you need to run the newly created container with the command :`docker run -p 'yourPort':3000 alessandro/express_student` (or use the file **run-container.sh** which uses the port-mapping -p 9090:3000).
+We need to build our docker image, I have already configured for you a bash file **build-image.sh** with the command: `docker build -t res/express_student .` , doing so will run the configurations found in the DockerFile. Then you need to run the newly created container with the command :`docker run -p 'yourPort':3000 res/express_student` (or use the file **run-container.sh** which uses the port-mapping -p 9090:3000).
 Finally you can retrieve the json files at `localhost:'portUsedBefore'`, through a browser, postman, telnet (or whatever you prefer ( ͡° ͜ʖ ͡°)  ).
 
 #### Result using Postman
