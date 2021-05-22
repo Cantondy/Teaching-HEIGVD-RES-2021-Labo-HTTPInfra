@@ -20,7 +20,7 @@ CMD ["node", "/opt/app/index.js"]
 * `COPY src /opt/app` : Finally, we copy the contents of the local `src` folder into our docker at the location `/opt/app`. This folder will contain our project node.js. 
 * `CMD ["node", "/opt/app/index.js"]` : indicate the command to be executed when launching the container.
 
-Exemple of our JSON r'esult: `{"Name":"Jackal","Age":33,"Gender":"Male"}`
+Exemple of our JSON result: `{"Name":"Jackal","Age":33,"Gender":"Male"}`
 
 #### Tests
 In the `docker-images/express-image` folder you will find everything necessary for the installation of our node server.
