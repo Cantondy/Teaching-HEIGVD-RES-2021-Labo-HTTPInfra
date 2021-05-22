@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # Build the Docker image locally
-docker build --tag alessandro/apache_rp .
+docker build -t res/apache_rp .
