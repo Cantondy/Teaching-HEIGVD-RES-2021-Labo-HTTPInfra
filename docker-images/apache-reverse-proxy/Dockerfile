@@ -15,8 +15,8 @@ COPY templates  /var/apache2/templates
 # Copy conf folder content to container
 COPY conf/ /etc/apache2
 
-# Install required modules
-RUN a2enmod proxy proxy_http
+# Install required modules (the last 2 modules are for load balancing)
+RUN a2enmod proxy proxy_http proxy_balancer lbmethod_byrequests
 
 # Active virtual hosts
 RUN a2ensite 000-* 001-*

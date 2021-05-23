@@ -2,169 +2,159 @@
 
 ###### Alessando Parrino & Dylan Canton
 
-###### 21.05.2021
+###### 23.05.2021
 
 ---
 
-### Dynamic reverse proxy configuration
+### Load balancing : multiple server nodes
 
 #### Purpose
 
-The reverse proxy currently in place uses fixed IP addresses. The goal is to make the management of these addresses dynamic to adapt to the change of container addresses by passing the addresses via the `-e` flag of the` docker run` command and by executing a custom script in order to retrieve the environment variables to generate a configuration file. 
+Implementation of a load balancing system in the event of a server failure. The load is then distributed over the other servers in the cluster so that the site remains accessible. 
 
 
 
 #### Implementation
 
-First of all we create an `apache2-foreground` file in the same folder as the ` Dockerfile`. Its content is taken from the official PHP docker git : https://github.com/docker-library/php/blob/master/apache2-foreground 
+The apache documentation provides a module for load balancing : https://httpd.apache.org/docs/2.4/mod/mod_proxy_balancer.html
 
-We add the following lines in order to display the environment variables passed as a parameter of the `docker run` command with the` -e` flag. 
 
-```sh
-# Add setup for RES lab
-echo "Setup for the RES lab..."
-echo "Static App URL: $STATIC_APP"
-echo "Dynamic App URL: $DYNAMIC_APP"
-```
 
-We add this line too in order to allows to copy the configuration file generated in PHP into the container. 
+Its implementation requires : 
 
-```sh
-# Copy the ip addresses of the static and express dynamic servers
-php /var/apache2/templates/config-template.php > /etc/apache2/sites-available/001-reverse-proxy.conf
-```
+* the `proxy module` (already installed)
+* `the proxy_balancer` module 
+* And a module providing the load balancing algorithm. 
 
-To be sure that the script is executable on the *reverse-proxy server*, we configure the execution rights on the script : 
+In our case, we have chosen the `lbmethod_byrequests` module which is based on the number of requests 
 
-```shell
-chmod 755 apache2-foreground
+
+
+We first add the 2 modules `proxy_balancer` and ` lbmethod_byrequests` in the Dockerfile of the _reverse proxy_.
+
+```dockerfile
+RUN a2enmod proxy proxy_http proxy_balancer lbmethod_byrequests
 ```
 
 
 
-At the same level as the *Dockerfile*, we create a `templates` folder and inside a PHP file ` config-template.php`. This file will allow to retrieve the environment variables passed as parameters during the `docker run` command and to insert them in the configuration of the reverse proxy. It is this configuration that will be copied into the container using the `apache2-foreground` script that we created just before. 
+After that, we configure the load balancing clusters in the `config-template.php` file. Clusters are groupings of several servers. We are setting up 2 clusters here (between the <Proxy> tags) , one containing 2 static servers and the other 2 dynamic servers. We then modify the reverse proxy so that it calls these clusters rather than our servers directly. 
+
+We are also adding a tool that allows the management of load balancing in the browser on the page http://demo.res.ch/balancer-manager.
+
+```php
+<Location /balancer-manager>
+    SetHandler balancer-manager
+</Location>
+  
+ProxyPass /balancer-manager !
+```
+
+
 
 ```php
 <?php
-	$dynamic_app = getenv('DYNAMIC_APP');
-	$static_app  = getenv('STATIC_APP');
+	$dynamic_app_1 = getenv('DYNAMIC_APP_1');
+	$dynamic_app_2 = getenv('DYNAMIC_APP_2');
+	$static_app_1  = getenv('STATIC_APP_1');
+	$static_app_2  = getenv('STATIC_APP_2');
 ?>
 
 <VirtualHost *:80>
     ServerName demo.res.ch
+    
+    <Location /balancer-manager>
+      SetHandler balancer-manager
+    </Location>
+  
+    ProxyPass /balancer-manager !
 	
-    ProxyPass '/api/animals/' 'http://<?php print "$dynamic_app"?>/'
-    ProxyPassReverse '/api/animals/' 'http://<?php print "$dynamic_app"?>/'
+    <Proxy "balancer://dynamic_app_cluster">
+    BalancerMember 'http://<?php print "$dynamic_app_1"?>'
+    BalancerMember 'http://<?php print "$dynamic_app_2"?>'
+    </Proxy>
 
-    ProxyPass '/' 'http://<?php print "$static_app"?>/'
-    ProxyPassReverse '/' '<?php print "$static_app"?>/'
+    <Proxy "balancer://static_app_cluster">
+    BalancerMember 'http://<?php print "$static_app_1"?>'
+    BalancerMember 'http://<?php print "$static_app_2"?>'
+    </Proxy>
+
+    ProxyPass '/api/animals/' 'balancer://dynamic_app_cluster/'
+    ProxyPassReverse '/api/animals/' 'balancer://dynamic_app_cluster/'
+
+    ProxyPass '/' 'balancer://static_app_cluster/'
+    ProxyPassReverse '/' 'balancer://static_app_cluster/'
 </VirtualHost>
-```
-
-
-
-It remains to modify the *Dockerfile* to integrate our new files into the container during the _run_ of the image: 
-
-* We copy the script `apache2-foreground` in the ` /usr/local/bin` folder of the container. 
-* We copy the `templates` folder containing the PHP file ` config-template.php` in the `/var/apache2/templates` folder of the container.
-
-> **Warning**: It is important to note that the `apache2-foreground` script must be in UNIX format to run correctly on Linux. The problem is that using it on Windows will cause formatting problems and make the script potentially non-executable. It is possible to resolve this problem manually by rewriting or copying the script into a new file once in Windows. 
->
-> However, we have chosen to perform this formatting automatically using the _dos2unix_ tool which allows it to be done. This tool is therefore downloaded when the Dockerfile is launched and the script converted. 
-
-```dockerfile
-FROM php:7.2-apache 
-
-RUN apt-get update && \
-    apt-get install -y vim && \
-    apt-get install dos2unix
-
-# Copy apache2-foreground to container
-COPY apache2-foreground /usr/local/bin
-
-# Launch dos2unix to format script in the right way if executed on Windows
-RUN cd /usr/local/bin/ && dos2unix apache2-foreground
-
-# Copy templates folder to container
-COPY templates  /var/apache2/templates
-
-# Copy conf folder content to container
-COPY conf/ /etc/apache2
-
-# Install required modules
-RUN a2enmod proxy proxy_http
-
-# Active virtual hosts
-RUN a2ensite 000-* 001-*
 ```
 
 
 
 #### Tests
 
-The goal here is to test that our reverse proxy manages IP addresses dynamically. For this, we run several static servers of the `apache_php` image and several dynamic express servers of the ` express_student` image, only a static server and a dynamic express server have a name with the `--name` flag, they are the servers we are going to use with our _reverse proxy_. 
+We launch 2 static servers and 2 dynamic express servers :
 
 ```sh
-docker run -d res/apache_php
-docker run -d res/apache_php
-docker run -d --name apache_static res/apache_php
-
-docker run -d res/express_student
-docker run -d res/express_student
-docker run -d --name express_student res/express_student
+docker run -d --name apache_static_1 res/apache_php
+docker run -d --name apache_static_2 res/apache_php
+docker run -d --name express_student_1 res/express_student
+docker run -d --name express_student_2 res/express_student
 ```
 
 
 
-Once launched, we retrieve their respective IP addresses with `docker inspect` .
+We then get the ip addresses with the `docker inspect myContainerName | grep -i ipaddr` command.
+
+
+
+We launch the reverse proxy with the IP addresses of the 4 servers launched previously  : 
 
 ```sh
-docker inspect apache_static | grep -i ipaddr
-docker inspect express_student | grep -i ipaddr
+docker run -d -e STATIC_APP_1=x.x.x.x:80 -e STATIC_APP_2=x.x.x.x:80 -e DYNAMIC_APP_1=y.y.y.y:3000 -e DYNAMIC_APP_2=y.y.y.y:3000 --name apache_rp -p 8080:80 res/apache_rp
 ```
 
 
 
-We can now run the _reverse proxy_ of the `apache_rp` image by indicating the IP addresses of our static and dynamic server with the ` -e` flag and our 2 environment variables `DYNAMIC_APP` and ` STATIC_APP`. 
-
-In this command, the 2 addresses `x.x.x.x` and` y.y.y.y` are to be replaced by the IP addresses of our 2 servers retrieved just before. 
+We make sure that the site is accessible and works correctly, we will then stop a static server and a dynamic express server to use load balancing.
 
 ```sh
-docker run -d -e STATIC_APP=x.x.x.x:80 -e DYNAMIC_APP=y.y.y.y:3000 --name apache_rp -p 8080:80 res/apache_rp
+docker kill apache_static_2
+docker kill express_student_1
 ```
 
 
 
-We can therefore verify that the _reverse proxy_ is indeed using our 2 servers by accessing the home page of our site at the address `http://demo.res.ch:8080/`.
+We check that the site is still working.
 
-The behavior of the _reverse proxy_ should be similar to the previous steps. The website is displayed and dynamic content fetched correctly. 
-
-![S5-homepage-01](media/S5-homepage-01.PNG)
+![LB-siteUp](media/LB-siteUp.PNG)
 
 
 
-The solution described above is functional, but the recovery of the IP addresses of the containers and the launch of the _reverse proxy_ are not optimal. You have to execute these 3 commands each time, which can be redundant. We therefore decided to implement a `run-multi-containers` script which groups these actions and executes them automatically. 
+We can see the load balancing status on the page http://demo.res.ch/balancer-manager. Since 2 servers are down, load balancing has distributed the load on the other server of each cluster. 
 
-The script : 
+![LB-manager](media/LB-manager.PNG)
 
-* Start a static server of the `apache_php` image and a dynamic server of the` express_student` image.
-* Retrieve the IP addresses of these 2 containers with the `docker inspect` command and store them in 2 variables. 
-* Run the _reverse proxy_ of the `apache_rp` image using the 2 variables above.
 
->**Warning**: Before running this script, make sure that no other container with the name `apache_php` or ` express_student` is present, if this is the case, it is necessary to delete them with `docker rm 'nomImage' `. 
+
+As in step 5, we want to automate the launch of the servers. We therefore create a `run-multi-containers-loadBalancing` script using the` run-multi-containers` script from step 5 as a base. 
 
 ```sh
 #!/bin/bash
-docker run -d --name apache_static res/apache_php
-docker run -d --name express_student res/express_student
+docker run -d --name apache_static_1 res/apache_php
+docker run -d --name apache_static_2 res/apache_php
+docker run -d --name express_student_1 res/express_student
+docker run -d --name express_student_2 res/express_student
 
-#Use to get ip address from apache static server automatically
-ip_static=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' apache_static)
+#Use to get ip address from apache static servers automatically
+ip_static_1=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' apache_static_1)
 
-#Use to get ip address from express dynamic server automatically
-ip_dynamic=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' express_student)
+ip_static_2=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' apache_static_2)
+
+#Use to get ip address from express dynamic servers automatically
+ip_dynamic_1=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' express_student_1)
+
+ip_dynamic_2=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' express_student_2)
 
 #Run reverse proxy server with ip addresses from static server and express dynamic server
-docker run -d -e STATIC_APP=$ip_static:80 -e DYNAMIC_APP=$ip_dynamic:3000 --name apache_rp -p 8080:80 res/apache_rp
+docker run -d -e STATIC_APP_1=$ip_static_1:80 -e STATIC_APP_2=$ip_static_2:80 -e DYNAMIC_APP_1=$ip_dynamic_1:3000 -e DYNAMIC_APP_2=$ip_dynamic_2:3000 --name apache_rp -p 8080:80 res/apache_rp
 ```
 
