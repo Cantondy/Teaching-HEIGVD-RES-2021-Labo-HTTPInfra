@@ -6,51 +6,57 @@
 
 ---
 
-### Load balancing : multiple server nodes
+### Load balancing : Round-robin vs Sticky sessions
 
 #### Purpose
 
-Implementation of a load balancing system in the event of a server failure. The load is then distributed over the other servers in the cluster so that the site remains accessible. 
+The goal here is to show that the load balancer uses the _round-robin_ to distribute requests to dynamic servers as well as the implementation of _sticky sessions_ for requests to static servers. 
+
+The _round-robin_ is a scheduling algorithm allowing to distribute the working time between the different systems. The requests sent will be distributed among the various servers available according to the scheduling algorithm. 
+
+Setting up _sticky-sessions_ makes it possible to keep a session open for several exchanges of requests between a client and the same server. 
 
 
 
 #### Implementation
 
-The apache documentation provides a module for load balancing : https://httpd.apache.org/docs/2.4/mod/mod_proxy_balancer.html
+The implementation of the _sticky sessions_ is indicated on the page concerning the load balancing_ of apache : https://httpd.apache.org/docs/2.4/mod/mod_proxy_balancer.html
 
 
 
-Its implementation requires : 
+The method chosen here for the _sticky sessions_ is the use of *cookies*. We add the `headers` module in the _Dockerfile_ of the reverse proxy which allows us to implement the *cookies* system. 
 
-* the `proxy module` (already installed)
-* `the proxy_balancer` module 
-* And a module providing the load balancing algorithm. 
-
-In our case, we have chosen the `lbmethod_byrequests` module which is based on the number of requests 
-
-
-
-We first add the 2 modules `proxy_balancer` and ` lbmethod_byrequests` in the Dockerfile of the _reverse proxy_.
-
-```dockerfile
-RUN a2enmod proxy proxy_http proxy_balancer lbmethod_byrequests
+```
+RUN a2enmod proxy proxy_http proxy_balancer lbmethod_byrequests headers
 ```
 
 
 
-After that, we configure the load balancing clusters in the `config-template.php` file. Clusters are groupings of several servers. We are setting up 2 clusters here (between the <Proxy> tags) , one containing 2 static servers and the other 2 dynamic servers. We then modify the reverse proxy so that it calls these clusters rather than our servers directly. 
-
-We are also adding a tool that allows the management of load balancing in the browser on the page http://demo.res.ch/balancer-manager.
+The `config-template.php` file is modified in order to add a cookie.
 
 ```php
-<Location /balancer-manager>
-    SetHandler balancer-manager
-</Location>
-  
-ProxyPass /balancer-manager !
+Header add Set-Cookie "ROUTEID=.%{BALANCER_WORKER_ROUTE}e; path=/" env=BALANCER_ROUTE_CHANGED
 ```
 
 
+
+We must also configure a route for each member of the static server cluster.
+
+```php
+BalancerMember 'http://<?php print "$dynamic_app_X"?>' route=X
+```
+
+
+
+Finally, we link the session to the cookie created previously.
+
+```php
+ProxySet stickysession=ROUTEID
+```
+
+
+
+Here is the `config-template.php` file after configuring cookies for _sticky sessions_ :
 
 ```php
 <?php
@@ -69,14 +75,17 @@ ProxyPass /balancer-manager !
   
     ProxyPass /balancer-manager !
 	
+    Header add Set-Cookie "ROUTEID=.%{BALANCER_WORKER_ROUTE}e; path=/" env=BALANCER_ROUTE_CHANGED
+    
     <Proxy "balancer://dynamic_app_cluster">
     BalancerMember 'http://<?php print "$dynamic_app_1"?>'
     BalancerMember 'http://<?php print "$dynamic_app_2"?>'
     </Proxy>
 
     <Proxy "balancer://static_app_cluster">
-    BalancerMember 'http://<?php print "$static_app_1"?>'
-    BalancerMember 'http://<?php print "$static_app_2"?>'
+    BalancerMember 'http://<?php print "$static_app_1"?>' route=1
+    BalancerMember 'http://<?php print "$static_app_2"?>' route=2
+    ProxySet stickysession=ROUTEID
     </Proxy>
 
     ProxyPass '/api/animals/' 'balancer://dynamic_app_cluster/'
@@ -91,70 +100,46 @@ ProxyPass /balancer-manager !
 
 #### Tests
 
-We launch 2 static servers and 2 dynamic express servers :
+Having added a module in the _Dockerfile_ of the reverse proxy, we must first rebuild the `res/apache_rp` image. 
 
-```sh
-docker run -d --name apache_static_1 res/apache_php
-docker run -d --name apache_static_2 res/apache_php
-docker run -d --name express_student_1 res/express_student
-docker run -d --name express_student_2 res/express_student
-```
+We then launch the _load balancing_ infrastructure, manually or with the `run-multi-containers-loadBalancing` script as in the _Load balancing step: multiple server nodes_.
+
+You can access the load balancing management page at the address http://demo.res.ch:8080/balancer-manager.
 
 
 
-We then get the ip addresses with the `docker inspect myContainerName | grep -i ipaddr` command.
+**1. Round-Robin**
+
+We go to the cluster management page at the address http://demo.res.ch:8080/balancer-manager. We then examine the `Elected` field of our dynamic servers. 
+
+This counter increases for each server alternately each time we refresh a page of the site or open a new one. We also observe that as soon as one of the 2 servers is down, only the counter of the functioning server increases linearly. 
+
+![LB-roundrobin](media/LB-roundrobin.PNG)
+
+It should be noted that the `balance-manager` page must be refreshed each time for the changes to be visible. This behavior of the counter then allows us to check that the _Round-robin_ is working correctly. 
 
 
 
-We launch the reverse proxy with the IP addresses of the 4 servers launched previously  : 
+**2. Sticky sessions**
 
-```sh
-docker run -d -e STATIC_APP_1=x.x.x.x:80 -e STATIC_APP_2=x.x.x.x:80 -e DYNAMIC_APP_1=y.y.y.y:3000 -e DYNAMIC_APP_2=y.y.y.y:3000 --name apache_rp -p 8080:80 res/apache_rp
-```
+To test the _sticky sessions_, we modify the site page (_index.html_) of the 2nd image of the static server (modification of the title) in order to differentiate the 2 images of the static server. 
 
+We then access the page in the browser at the address http://demo.res.ch:8080/, we arrive on this page :  
 
-
-We make sure that the site is accessible and works correctly, we will then stop a static server and a dynamic express server to use load balancing.
-
-```sh
-docker kill apache_static_2
-docker kill express_student_1
-```
+![LB-SS-homepage1](media/LB-SS-homepage1.PNG)
 
 
 
-We check that the site is still working.
+We will now delete the cookies from our browser and reload the page. We can therefore see that we are this time on the page of the other static server. 
 
-![LB-siteUp](media/LB-siteUp.PNG)
-
-
-
-We can see the load balancing status on the page http://demo.res.ch/balancer-manager. Since 2 servers are down, load balancing has distributed the load on the other server of each cluster. 
-
-![LB-manager](media/LB-manager.PNG)
+![LB-SS-homepage2](media/LB-SS-homepage2.PNG)
 
 
 
-As in step 5, we want to automate the launch of the servers. We therefore create a `run-multi-containers-loadBalancing` script using the` run-multi-containers` script from step 5 as a base. 
+Using the cookie, we communicated with the same static server even during a page refresh. But as soon as the cookie is deleted, the client is no longer "*linked*" to the first server and can therefore access the second. 
 
-```sh
-#!/bin/bash
-docker run -d --name apache_static_1 res/apache_php
-docker run -d --name apache_static_2 res/apache_php
-docker run -d --name express_student_1 res/express_student
-docker run -d --name express_student_2 res/express_student
+A final check consists of going to the _load balancing_ management page at the address http://demo.res.ch:8080/balancer-manager. 
 
-#Use to get ip address from apache static servers automatically
-ip_static_1=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' apache_static_1)
+We see in the field `StickySession` contains the parameter` ROUTEID` defined previously in our `config-template.php` file. Our 2 static sites also have their respective route in the `Route` field.
 
-ip_static_2=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' apache_static_2)
-
-#Use to get ip address from express dynamic servers automatically
-ip_dynamic_1=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' express_student_1)
-
-ip_dynamic_2=$(docker inspect --format='{{range .NetworkSettings.Networks}}{{println .IPAddress}}{{end}}' express_student_2)
-
-#Run reverse proxy server with ip addresses from static server and express dynamic server
-docker run -d -e STATIC_APP_1=$ip_static_1:80 -e STATIC_APP_2=$ip_static_2:80 -e DYNAMIC_APP_1=$ip_dynamic_1:3000 -e DYNAMIC_APP_2=$ip_dynamic_2:3000 --name apache_rp -p 8080:80 res/apache_rp
-```
-
+![LB-stickySession](media/LB-stickySession.PNG)
