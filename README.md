@@ -135,13 +135,11 @@ RUN a2ensite 000-* 001-*
 
 - `RUN a2enmod proxy proxy_http` activate proxy and proxy-http modules
 
-- `RUN a2ensite 000-* 001-*` Allows to activate files starting with "000-..." and "001-...".
+- `RUN a2ensite 000-* 001-*` allows to activate files starting with "000-..." and "001-...".
 
-  In the `conf/` folder we will find the configuration files of our reverse proxy, this folder will be copied in the directory /etc/apache2 of our container.
+In the `conf/` folder we will find the configuration files of our reverse proxy, this folder will be copied in the directory `/etc/apache2` of our container.
 
-  The configuration of our reserve proxy can be found in the file
-
-  `001-reverse-proxy.conf`
+The configuration of our reserve proxy can be found in the file `001-reverse-proxy.conf`
 
   ```
   <VirtualHost *:80>
