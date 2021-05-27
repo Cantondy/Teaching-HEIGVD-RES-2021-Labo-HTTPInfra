@@ -21,13 +21,11 @@ We then create a dockerfile containing the following lines:
 
 ```
 FROM php:7.2-apache
-MAINTAINER Dylan Canton <dylan.canton@heig-vd.ch>
 
 COPY content/ /var/www/html/
 ```
 
 * `FROM php:7.2-apache` : This first line allows to recover the image of PHP with apache server in version 7.2. 
-* `MAINTAINER Dylan Canton <dylan.canton@heig-vd.ch>` : This line is indicative, it simply describes the author of this dockerfile. 
 * `COPY content/ /var/www/html/` : Finally, we copy the contents of the local `content` folder into our docker at the location `/var/www/html`. This folder will contain our static website to launch in the docker container. 
 
 
@@ -42,7 +40,7 @@ Then we create 2 scripts for the build of the image and the launch in order to f
 #!/bin/bash
 
 # Build the Docker image
-docker build --tag cantondy/apache_php .
+docker build --tag res/apache_php .
 ```
 
 
@@ -53,14 +51,14 @@ The second script `run-container.sh` allows you to launch the container, note he
 #!/bin/bash
 
 # Run docker image and do port mapping
-docker run -p 9090:80 cantondy/apache_php
+docker run -p 9090:80 res/apache_php
 ```
 
 
 
 #### Tests
 
-The `content` folder, the dockerfile and the 2 scripts for building and launching the image are put in a single folder. 
+The `content` folder, the *Dockerfile* and the 2 scripts for building and launching the image are put in a single folder. 
 
 Then we build the image by running the `build.image.sh` script 
 
