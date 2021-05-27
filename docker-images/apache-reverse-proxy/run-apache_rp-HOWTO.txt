@@ -1,9 +1,0 @@
--First get ip address from apache-static-server and express-dynamic-server with cmd : 
-
-docker inspect apache_static | grep -i ipaddr
-docker inspect express_student | grep -i ipaddr
-
--Then run apache reverse proxy server with these ip addresses
-
-docker run -d -e STATIC_APP=172.17.0.x:80 -e DYNAMIC_APP=172.17.0.y:3000 --name apache_rp -p 8080:80 res/apache_rp
-
