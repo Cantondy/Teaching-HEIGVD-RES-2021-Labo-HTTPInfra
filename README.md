@@ -10,7 +10,7 @@
 
 #### Purpose
 
-The reverse proxy currently in place uses fixed IP addresses. The goal is to make the management of these addresses dynamic to adapt to the change of container addresses by passing the addresses via the `-e` flag of the` docker run` command and by executing a custom script in order to retrieve the environment variables to generate a configuration file. 
+The reverse proxy currently in place uses fixed IP addresses. The goal is to make the management of these addresses dynamic to adapt to the change of container addresses by passing the addresses via the `-e` flag of the ` docker run` command and by executing a custom script in order to retrieve the environment variables to generate a configuration file. 
 
 
 
