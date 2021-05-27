@@ -30,7 +30,7 @@ In our case, we have chosen the `lbmethod_byrequests` module which is based on t
 
 
 
-We first add the 2 modules `proxy_balancer` and ` lbmethod_byrequests` in the Dockerfile of the _reverse proxy_.
+We first add the 2 modules `proxy_balancer` and ` lbmethod_byrequests` in the *Dockerfile* of the _reverse proxy_.
 
 ```dockerfile
 RUN a2enmod proxy proxy_http proxy_balancer lbmethod_byrequests
