@@ -767,7 +767,7 @@ We see in the field `StickySession` contains the parameter` ROUTEID` defined pre
 
 Now we want to be able to visualize our images and docker containers in a user-friendly graphical interface where we can perform different operations(list containers, start/stop containers, etc.) .
 
-**Please note: **For this step we decided not to make a web app, which would have taken a long time, we chose to use portainer. Portainer is an open-source management UI for Docker that allows you to manage containers, images, networks, and volumes from the web-based Portainer dashboard.
+**Please note:** For this step we decided not to make a web app, which would have taken a long time, we chose to use portainer. Portainer is an open-source management UI for Docker that allows you to manage containers, images, networks, and volumes from the web-based Portainer dashboard.
 
 #### Implementation
 
