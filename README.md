@@ -1,7 +1,7 @@
 # Teaching-HEIGVD-RES-2021-Labo-HTTPInfra
 ###### Alessando Parrino & Dylan Canton
 
-###### 17.05.2021
+###### 30.05.2021
 
 ---
 
@@ -15,84 +15,76 @@
 
 ### Bonus Steps
 
-- [Load balancing : multiple server nodes](#load-balancing--multiple-server-nodes)
-- [Load balancing : Round-robin vs Sticky sessions](#load-balancing--round-robin-vs-sticky-sessions)
-- [Management UI](#management-ui)
+- [Extra step: Load balancing - multiple server nodes](#extra-step-load-balancing---multiple-server-nodes)
+- [Extra step: Load balancing - Round-robin vs Sticky sessions](#extra-step-load-balancing---round-robin-vs-sticky-sessions)
+- [Extra step: Management UI](#extra-step-management-ui)
 
 ### Step 1: Static HTTP server with apache httpd
 
 #### Purpose
 
-This step allows you to set up an apache httpd server in a docker. A web template is also set up in order to have a coherent and clean rendering. 
-
-
+This step allows you to set up an apache httpd server in a docker. A web template is also set up in order to have a coherent and clean rendering.
 
 #### Implementation
 
-First of all we download the apache server docker image on *dockerhub*. It was chosen here to take an image taking into account a PHP server, in order to increase the scalability over time and the possibilities offered. The chosen image is therefore the official image of PHP with apache HTTPD server at this address: https://hub.docker.com/_/php/ 
+First of all we download the apache server docker image on *dockerhub*. It was chosen here to take an image taking into account a PHP server, in order to increase the scalability over time and the possibilities offered. The chosen image is therefore the official image of PHP with apache HTTPD server at this address: https://hub.docker.com/_/php/
 
-We then create a dockerfile containing the following lines: 
+We then create a dockerfile containing the following lines:
 
-```dockerfile
+```
 FROM php:7.2-apache
-MAINTAINER Dylan Canton <dylan.canton@heig-vd.ch>
 
 COPY content/ /var/www/html/
 ```
 
-* `FROM php:7.2-apache` : This first line allows to recover the image of PHP with apache server in version 7.2. 
-* `MAINTAINER Dylan Canton <dylan.canton@heig-vd.ch>` : This line is indicative, it simply describes the author of this dockerfile. 
-* `COPY content/ /var/www/html/` : Finally, we copy the contents of the local `content` folder into our docker at the location `/var/www/html`. This folder will contain our static website to launch in the docker container. 
+- `FROM php:7.2-apache` : This first line allows to recover the image of PHP with apache server in version 7.2.
+- `COPY content/ /var/www/html/` : Finally, we copy the contents of the local `content` folder into our docker at the location `/var/www/html`. This folder will contain our static website to launch in the docker container.
 
+To provide us with a theme for the static website, there is a wide variety of sites offering free templates. We chose to take one from this site: https://www.free-css.com/free-css-templates and modify it to keep only the essential, a home page.
 
+The files of this web template are therefore put in our local `content `folder so that they are copied into the docker when the container is launched.
 
-To provide us with a theme for the static website, there is a wide variety of sites offering free templates. We chose to take one from this site: https://www.free-css.com/free-css-templates and modify it to keep only the essential, a home page. 
+Then we create 2 scripts for the build of the image and the launch in order to facilitate the use of docker. The first script `build-image.sh` allows to build the image
 
-The files of this web template are therefore put in our local `content ` folder so that they are copied into the docker when the container is launched. 
-
-Then we create 2 scripts for the build of the image and the launch in order to facilitate the use of docker. The first script `build-image.sh` allows to build the image  
-
-```sh
+```
 #!/bin/bash
 
 # Build the Docker image
-docker build --tag cantondy/apache_php .
+docker build --tag res/apache_php .
 ```
 
+The second script `run-container.sh` allows you to launch the container, note here that the option `-p 9090: 80` allows you to do a port mapping. We redirect port **9090** of our local machine to port **80** of the docker in order to access the apache server on our browser (port 80 being provided for the HTTP protocol).
 
-
-The second script `run-container.sh` allows you to launch the container, note here that the option ` -p 9090: 80` allows you to do a port mapping. We redirect port **9090** of our local machine to port **80** of the docker in order to access the apache server on our browser (port 80 being provided for the HTTP protocol). 
-
-```sh
+```
 #!/bin/bash
 
 # Run docker image and do port mapping
-docker run -p 9090:80 cantondy/apache_php
+docker run -p 9090:80 res/apache_php
 ```
-
-
 
 #### Tests
 
-The `content` folder, the dockerfile and the 2 scripts for building and launching the image are put in a single folder. 
+The `content` folder, the *Dockerfile* and the 2 scripts for building and launching the image are put in a single folder.
 
-Then we build the image by running the `build.image.sh` script 
+Then we build the image by running the `build.image.sh` script
 
-```shell
+```
 ./build-image.sh
 ```
 
-And we launch the docker with the second script `run-container.sh` 
+And we launch the docker with the second script `run-container.sh`
 
-```shell
+```
 ./run-container.sh
 ```
 
-The docker is now running, we try to access our static website from our local machine by typing the address `localhost: 9090` in our browser. We can see here that the site is accessible and displays the template that we have set up : 
+The docker is now running, we try to access our static website from our local machine by typing the address `localhost: 9090` in our browser. We can see here that the site is accessible and displays the template that we have set up :
 
-![step1_1](media/step1_1.PNG)
+![step1_1](./media/step1_1.PNG)
 
 
+
+---
 
 ### Step 2: Dynamic HTTP server with express.js
 
@@ -133,6 +125,8 @@ In the `docker-images/express-image` folder you will find everything necessary f
 ![step2_1](media/step2_1.png)
 
 
+
+---
 
 ### Step 3: Reverse proxy with apache (static configuration)
 
@@ -224,6 +218,8 @@ Finally you can retrieve our website at `demo.res.ch:8080` and our json animals 
 
 
 
+---
+
 ### Step 4: AJAX requests with JQuery
 
 #### Purpose
@@ -298,6 +294,8 @@ Finally you can retrieve our dynamic website at `demo.res.ch:8080` and our JSON 
 ![step4_1](media/step4_1.gif)
 
 
+
+---
 
 ### Step 5: Dynamic reverse proxy configuration
 
@@ -463,7 +461,9 @@ docker run -d -e STATIC_APP=$ip_static:80 -e DYNAMIC_APP=$ip_dynamic:3000 --name
 
 
 
-### Load balancing : multiple server nodes
+---
+
+### Extra step: Load balancing - multiple server nodes
 
 #### Purpose
 
@@ -617,9 +617,9 @@ docker run -d -e STATIC_APP_1=$ip_static_1:80 -e STATIC_APP_2=$ip_static_2:80 -e
 
 
 
+---
 
-
-### Load balancing : Round-robin vs Sticky sessions
+### Extra step: Load balancing - Round-robin vs Sticky sessions
 
 #### Purpose
 
@@ -759,7 +759,9 @@ We see in the field `StickySession` contains the parameter` ROUTEID` defined pre
 
 
 
-### Management UI
+---
+
+### Extra step: Management UI
 
 #### Purpose
 
