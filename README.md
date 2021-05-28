@@ -92,7 +92,7 @@ The docker is now running, we try to access our static website from our local ma
 
 In this second part of the lab we were asked to create a node.js project, node is used in combination with the package express to be able to create easily an http server, everything will then be integrated into a docker container.
 
-:bangbang:Following the video presentation we have called the image **express_student** so it would be more appropriate to call it **express_animals** since we are returning animals, unfortunately we realized only at the end of the lab the error and changing the name would take a long time.
+:bangbang:**Please Note:** Following the video presentation we have called the image **express_student** so it would be more appropriate to call it **express_animals** since we are returning animals, unfortunately we realized only at the end of the lab the error and changing the name would take a long time.
 
 
 #### Implementation
