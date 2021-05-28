@@ -92,6 +92,7 @@ The docker is now running, we try to access our static website from our local ma
 
 In this second part of the lab we were asked to create a node.js project, node is used in combination with the package express to be able to create easily an http server, everything will then be integrated into a docker container.
 
+<span style="color: red;">Please note:</span> Following the video presentation we have called the image **express_student** so it would be more appropriate to call it **express_animals** since we are returning animals, unfortunately we realized only at the end of the lab the error and changing the name would take a long time.
 
 
 #### Implementation
@@ -107,7 +108,7 @@ CMD ["node", "/opt/app/index.js"]
 ```
 
 - `FROM node:14.16.1` : This first line allows to recover the image of node.js.
-- `COPY src /opt/app` : Finally, we copy the contents of the local `src` folder into our docker at the location `/opt/app`. This folder will contain our project node.js.
+- `COPY src /opt/app` :  We copy the contents of the local `src` folder into our docker at the location `/opt/app`. This folder will contain our project node.js.
 - `CMD ["node", "/opt/app/index.js"]` : indicate the command to be executed when launching the container.
 
 Exemple of our JSON result: `{"Name":"Jackal","Age":33,"Gender":"Male"}`
@@ -224,7 +225,7 @@ Finally you can retrieve our website at `demo.res.ch:8080` and our json animals 
 
 #### Purpose
 
-In this fourth part of the workshop we were asked to make the content of our web page dynamic.
+In this fourth part of the lab we were asked to make the content of our web page dynamic.
 
 
 
