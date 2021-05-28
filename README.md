@@ -634,7 +634,7 @@ Setting up _sticky-sessions_ makes it possible to keep a session open for severa
 
 #### Implementation
 
-The implementation of the _sticky sessions_ is indicated on the page concerning the load balancing_ of apache : https://httpd.apache.org/docs/2.4/mod/mod_proxy_balancer.html
+The implementation of the _sticky sessions_ is indicated on the page concerning the *load balancing* of apache : https://httpd.apache.org/docs/2.4/mod/mod_proxy_balancer.html
 
 
 
