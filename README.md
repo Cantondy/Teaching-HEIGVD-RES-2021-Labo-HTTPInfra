@@ -618,6 +618,12 @@ docker run -d -e STATIC_APP_1=$ip_static_1:80 -e STATIC_APP_2=$ip_static_2:80 -e
 
 
 
+#### Infrastructure Diagram
+
+![LB-diagram](./media/LB-diagram.PNG)
+
+
+
 ---
 
 ### Extra step: Load balancing - Round-robin vs Sticky sessions
